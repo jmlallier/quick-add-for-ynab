@@ -28,7 +28,7 @@ type CategoryGroup = {
   categories: Category[];
 };
 
-type CategoryGroups = CategoryGroups[];
+type CategoryGroups = CategoryGroup[];
 
 const ynabAPI = new ynab.API(YNAB_ACCESS_TOKEN);
 
@@ -67,6 +67,7 @@ const createTransaction = async ({
   );
   console.log({ saveTransaction });
 };
+*/
 
 async function getPayees() {
   const payeesResponse = await ynabAPI.payees.getPayees(YNAB_BUDGET_ID);

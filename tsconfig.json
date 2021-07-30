@@ -17,5 +17,7 @@
 	"include": [
 		"source",
 		"webpack.config.js"
-	]
+,
+"stories/popup.stories.tsx"
+]
 }
