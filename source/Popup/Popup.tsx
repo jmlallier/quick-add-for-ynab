@@ -1,123 +1,88 @@
 import * as React from 'react';
 import Toggle from "../Toggle/Toggle";
-import * as ynab from "ynab";
-import { SaveTransactionWrapper } from "ynab";
 import PayeeDropdown from "../PayeeDropdown/PayeeDropdown";
 import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
+import CurrencyInput from "../CurrencyInput/CurrencyInput";
+import {
+  Account,
+  Category,
+  createTransaction,
+  getBudget,
+  normalizeAccounts,
+  normalizeCategories,
+  normalizePayees,
+  Payee,
+  TransactionStatus,
+  ynabAPI,
+  YNAB_BUDGET_ID,
+} from "../utils";
 
 // import {browser, Tabs} from 'webextension-polyfill-ts';
 
 // import './styles.scss';
 
-const YNAB_ACCESS_TOKEN =
-  "be651dc2f7903b4a477961352b95ca1f364eef82123c30005e93ca0b7f5c97b4";
-const YNAB_BUDGET_ID = "5a0c4806-5a7d-4c55-8c22-c4ecd11f1041";
-const YNAB_ACCOUNT_ID = "edfc49ba-9b7f-457e-a6e5-cb3b6ce87f1d";
-
-export type Payee = {
-  id: string | null;
-  name: string | null;
+export type CurrencyFormat = {
+  currency_symbol: string;
+  decimal_digits: number;
+  decimal_separator: "." | "," | "";
+  display_symbol: boolean;
+  group_separator: "," | ".";
+  iso_code: string;
+  symbol_first: boolean;
 };
-
-export type Category = {
-  id: string | null;
-  name: string | null;
-};
-
-type CategoryGroup = {
-  categories: Category[];
-};
-
-type CategoryGroups = CategoryGroup[];
-
-const ynabAPI = new ynab.API(YNAB_ACCESS_TOKEN);
-
-const createTransaction = async ({
-  amount,
-  payee = { id: null, name: null },
-  category = { id: null, name: null },
-  memo = "",
-  inflow = false,
-}: {
-  amount: number;
-  payee?: Payee;
-  category?: Category;
-  memo?: string;
-  inflow?: boolean;
-}) => {
-  const budgetId = YNAB_BUDGET_ID;
-  const accountId = YNAB_ACCOUNT_ID;
-
-  const transactionsWrapper: SaveTransactionWrapper = {
-    transaction: {
-      account_id: accountId,
-      date: new Date().toISOString().split("T")[0],
-      amount: inflow ? Math.abs(amount) : -Math.abs(amount),
-      payee_name: payee.name,
-      payee_id: payee.id,
-      category_id: category.id,
-      memo,
-    },
-  };
-  console.log("Transaction: %o", transactionsWrapper.transaction);
-
-  const saveTransaction = await ynabAPI.transactions.createTransaction(
-    budgetId,
-    transactionsWrapper
-  );
-  console.log({ saveTransaction });
-};
-*/
-
-async function getPayees() {
-  const payeesResponse = await ynabAPI.payees.getPayees(YNAB_BUDGET_ID);
-  return (
-    payeesResponse.data.payees
-      .map(({ id, name }) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name)) || []
-  );
-}
-
-async function getCategories() {
-  const categoriesResponse = await ynabAPI.categories.getCategories(
-    YNAB_BUDGET_ID
-  );
-  const cats =
-    categoriesResponse.data.category_groups
-      .flatMap((group) => group.categories)
-      .filter(({ hidden, deleted }) => !hidden && !deleted)
-      .filter(Boolean)
-      .map(({ id, name }) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name)) || [];
-  return cats;
-}
 
 export default function Popup() {
-  const defaultPayees: Payee[] | [] = [];
-  const [payees, setPayees] = React.useState(defaultPayees);
+  const [budget, setBudget] = React.useState({});
+  const [currencyFormat, setCurrencyFormat]: [CurrencyFormat, any] =
+    React.useState({
+      currency_symbol: "$",
+      decimal_digits: 2,
+      decimal_separator: ".",
+      display_symbol: true,
+      group_separator: ",",
+      iso_code: "USD",
+      symbol_first: true,
+    });
+  const [loadingBudget, setLoadingBudget] = React.useState(true);
+  const [accounts, setAccounts] = React.useState([]);
+  const [selectedAccount, setSelectedAccount] = React.useState("");
+  const [payees, setPayees] = React.useState([]);
   const [selectedPayee, setSelectedPayee] = React.useState({} as Payee);
-  const [loadingPayees, setLoadingPayees] = React.useState(true);
   const [memo, setMemo] = React.useState("");
   const [inflow, setInflow] = React.useState(false);
   const [amount, setAmount] = React.useState(0);
 
-  const defaultCategories: Category[] | [] = [];
-  const [categories, setCategories] = React.useState(defaultCategories);
+  const [categories, setCategories] = React.useState([]);
   const [selectedCategory, setSelectedCategory] = React.useState(
     {} as Category
   );
   const [loadingCategories, setLoadingCategories] = React.useState(true);
 
+  const [transactionStatus, setTransactionStatus]: [TransactionStatus, any] =
+    React.useState("idle");
+
+  React.useEffect(() => {
+    ynabAPI.budgets.getBudgetById(YNAB_BUDGET_ID);
+  }, []);
+
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const transactionData = {
+      accountId: selectedAccount,
       amount,
       payee: selectedPayee,
       category: selectedCategory,
       memo,
       inflow,
     };
-    await createTransaction(transactionData);
+    try {
+      setTransactionStatus("pending");
+      await createTransaction(transactionData);
+      setTransactionStatus("complete");
+    } catch (e) {
+      setTransactionStatus("error");
+      console.error(e);
+    }
   };
 
   const onSelectedPayeeChange = (changes: {
@@ -138,30 +103,25 @@ export default function Popup() {
     return changes;
   };
 
-  async function fetchPayees() {
+  async function fetchBudget() {
     try {
-      const payeeResponse: Payee[] = await getPayees();
-      setPayees(payeeResponse);
+      const budget = await getBudget();
+      console.log({ budget });
+      setBudget(budget);
+      setCurrencyFormat(budget.currency_format);
+      setAccounts(normalizeAccounts(budget.accounts));
+      setSelectedAccount(budget?.accounts[0]?.id || "");
+      setCategories(normalizeCategories(budget.categories));
+      setPayees(normalizePayees(budget.payees));
     } catch (err) {
       console.error(err);
     } finally {
-      setLoadingPayees(false);
+      setLoadingBudget(false);
     }
   }
 
-  async function fetchCategories() {
-    try {
-      const categoryResponse: Category[] = await getCategories();
-      setCategories(categoryResponse);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingCategories(false);
-    }
-  }
   React.useEffect(() => {
-    fetchPayees();
-    fetchCategories();
+    fetchBudget();
   }, []);
   return (
     <div className="bg-white border border-gray-100 rounded-lg shadow w-96">
@@ -186,9 +146,32 @@ export default function Popup() {
         >
           <div className="flex flex-col w-full space-y-3">
             <div>
+              <label
+                htmlFor="account"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Account
+              </label>
+              <select
+                id="account"
+                name="account"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                onChange={(event) => setSelectedAccount(event.target.value)}
+              >
+                {accounts.map(({ id, name }) => {
+                  return (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div>
               <PayeeDropdown
                 onSelectedItemChange={onSelectedPayeeChange}
-                disabled={loadingPayees}
+                disabled={loadingBudget}
                 items={payees}
                 label="Payee"
               />
@@ -197,9 +180,9 @@ export default function Popup() {
             <div>
               <CategoryDropdown
                 onSelectedItemChange={onSelectedCategoryChange}
-                disabled={loadingCategories}
+                disabled={loadingBudget}
                 items={categories}
-                label="Categories"
+                label="Category"
               />
             </div>
 
@@ -212,6 +195,7 @@ export default function Popup() {
               </label>
               <div className="mt-1">
                 <input
+                  placeholder="Enter Memo"
                   onInput={(event: React.SyntheticEvent<HTMLInputElement>) =>
                     setMemo(event.target.value)
                   }
@@ -230,12 +214,9 @@ export default function Popup() {
                 Amount
               </label>
               <div className="mt-1">
-                <input
-                  onInput={(event: React.SyntheticEvent<HTMLInputElement>) =>
-                    setAmount(Number(event.target.value) || 0)
-                  }
-                  id="amount"
-                  name="amount"
+                <CurrencyInput
+                  onNumericValue={(value: number) => setAmount(value)}
+                  maskOptions={currencyFormat}
                   className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
@@ -244,6 +225,7 @@ export default function Popup() {
           <button
             type="submit"
             className="w-full px-4 py-2 font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm"
+            disabled={transactionStatus === "pending"}
           >
             Save
           </button>

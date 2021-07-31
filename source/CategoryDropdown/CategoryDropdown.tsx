@@ -7,6 +7,8 @@ function stateReducer(state: any, actionAndChanges: any) {
   // this prevents the menu from being closed when the user selects an item with 'Enter' or mouse
   switch (type) {
     case useCombobox.stateChangeTypes.ItemClick:
+    case useCombobox.stateChangeTypes.InputKeyDownEnter:
+    case useCombobox.stateChangeTypes.InputBlur:
     case useCombobox.stateChangeTypes.FunctionSelectItem:
       return {
         ...changes,
@@ -70,7 +72,7 @@ export default function CategoryDropdown({
       <div className={comboboxClassName} {...getComboboxProps()}>
         <input
           className={inputClassName}
-          placeholder="Category"
+          placeholder="Enter Category"
           {...getInputProps({ disabled })}
         />
         <button

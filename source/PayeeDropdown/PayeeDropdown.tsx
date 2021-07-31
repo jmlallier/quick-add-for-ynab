@@ -7,10 +7,17 @@ function stateReducer(state: any, actionAndChanges: any) {
   // this prevents the menu from being closed when the user selects an item with 'Enter' or mouse
   switch (type) {
     case useCombobox.stateChangeTypes.ItemClick:
+    case useCombobox.stateChangeTypes.InputKeyDownEnter:
+    case useCombobox.stateChangeTypes.InputBlur:
     case useCombobox.stateChangeTypes.FunctionSelectItem:
       return {
         ...changes,
         inputValue: changes.selectedItem.name,
+      };
+    case useCombobox.stateChangeTypes.InputChange:
+      return {
+        ...changes,
+        isOpen: true,
       };
     default:
       return changes; // otherwise business as usual.
@@ -70,7 +77,7 @@ export default function PayeeDropdown({
       <div className={comboboxClassName} {...getComboboxProps()}>
         <input
           className={inputClassName}
-          placeholder="Payee"
+          placeholder="Enter Payee"
           {...getInputProps({ disabled })}
         />
         <button
