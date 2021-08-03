@@ -4,7 +4,6 @@ import PayeeDropdown from "../PayeeDropdown/PayeeDropdown";
 import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import CurrencyInput from "../CurrencyInput/CurrencyInput";
 import {
-  Account,
   Category,
   createTransaction,
   getBudget,
@@ -56,7 +55,6 @@ export default function Popup() {
   const [selectedCategory, setSelectedCategory] = React.useState(
     {} as Category
   );
-  const [loadingCategories, setLoadingCategories] = React.useState(true);
 
   const [transactionStatus, setTransactionStatus]: [TransactionStatus, any] =
     React.useState("idle");
@@ -106,11 +104,11 @@ export default function Popup() {
   async function fetchBudget() {
     try {
       const budget = await getBudget();
-      console.log({ budget });
       setBudget(budget);
+      console.log({ budget });
       setCurrencyFormat(budget.currency_format);
       setAccounts(normalizeAccounts(budget.accounts));
-      setSelectedAccount(budget?.accounts[0]?.id || "");
+      setSelectedAccount(budget.accounts[0].id || "");
       setCategories(normalizeCategories(budget.categories));
       setPayees(normalizePayees(budget.payees));
     } catch (err) {
@@ -227,7 +225,7 @@ export default function Popup() {
             className="w-full px-4 py-2 font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm"
             disabled={transactionStatus === "pending"}
           >
-            Save
+            {transactionStatus === "pending" ? "Saving..." : "Save"}
           </button>
         </form>
       </div>
