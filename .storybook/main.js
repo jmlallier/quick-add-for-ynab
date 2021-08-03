@@ -44,6 +44,7 @@ module.exports = {
         {
           loader: "postcss-loader",
           options: {
+            sourceMap: true,
             postcssOptions: {
               plugins: [
                 [
@@ -52,6 +53,7 @@ module.exports = {
                     // Options
                   },
                 ],
+                require("tailwindcss"),
               ],
             },
           },

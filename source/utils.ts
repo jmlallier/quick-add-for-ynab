@@ -3,8 +3,7 @@ import { SaveTransactionWrapper } from "ynab";
 
 const YNAB_ACCESS_TOKEN =
   "be651dc2f7903b4a477961352b95ca1f364eef82123c30005e93ca0b7f5c97b4";
-export const YNAB_BUDGET_ID = "5a0c4806-5a7d-4c55-8c22-c4ecd11f1041";
-const YNAB_ACCOUNT_ID = "edfc49ba-9b7f-457e-a6e5-cb3b6ce87f1d";
+export const YNAB_BUDGET_ID = "ab3274ba-cbbe-4f21-8c5b-bf356dc69142";
 
 export type Account = {
   id: string;

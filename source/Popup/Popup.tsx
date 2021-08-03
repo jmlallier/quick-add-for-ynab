@@ -4,7 +4,6 @@ import PayeeDropdown from "../PayeeDropdown/PayeeDropdown";
 import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import CurrencyInput from "../CurrencyInput/CurrencyInput";
 import {
-  Account,
   Category,
   createTransaction,
   getBudget,
@@ -16,6 +15,8 @@ import {
   ynabAPI,
   YNAB_BUDGET_ID,
 } from "../utils";
+
+import "../styles/main.scss";
 
 // import {browser, Tabs} from 'webextension-polyfill-ts';
 
